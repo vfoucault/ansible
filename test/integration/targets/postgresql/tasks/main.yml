@@ -716,6 +716,88 @@
       - "result_database.stdout_lines[-1] == '(1 row)'"
       - "'{{ db_user2 }}=Cc' in result_database.stdout"
 
+- name: Grant ALL Default privileges
+  postgresql_privs:
+    type: "default_priv"
+    state: "present"
+    roles: "{{ db_user2 }}"
+    privs: "ALL"
+    objs: "ALL_DEFAULT"
+    db: "{{ db_name }}"
+    login: "{{ db_user1 }}"
+    password: "password"
+    host: "localhost"
+
+- name: Check that the correct default privs are applied
+  become: True
+  become_user: "{{ pg_user }}"
+  shell: echo "SELECT defaclacl, defaclobjtype FROM pg_default_acl a JOIN pg_namespace b ON a.defaclnamespace=b.oid | psql {{ db_name }}
+  register: result_database
+
+- assert:
+    that:
+      - "result_database.stdout_lines[-1] == '(4 rows)'"
+      - "'{{{ db_user2 }}=arwdDxt/{{ db_user1 }}	r' in result_database.stdout"
+      - "'{{{ db_user2 }}=rwU/{{ db_user1 }}	S' in result_database.stdout"
+      - "'{{{ db_user2 }}=X/{{ db_user1 }}	f' in result_database.stdout"
+      - "'{{{ db_user2 }}=U/{{ db_user1 }}	T' in result_database.stdout"
+
+- name: Grant ALL Default privileges with grant option
+  postgresql_privs:
+    type: "default_priv"
+    state: "present"
+    roles: "{{ db_user2 }}"
+    privs: "ALL"
+    objs: "ALL_DEFAULT"
+    db: "{{ db_name }}"
+    login: "{{ db_user1 }}"
+    grant_option: True
+    password: "password"
+    host: "localhost"
+
+- name: Check that the correct default privs are applied
+  become: True
+  become_user: "{{ pg_user }}"
+  shell: echo "SELECT defaclacl, defaclobjtype FROM pg_default_acl a JOIN pg_namespace b ON a.defaclnamespace=b.oid | psql {{ db_name }}
+  register: result_database
+
+- assert:
+    that:
+      - "result_database.stdout_lines[-1] == '(4 rows)'"
+      - "'{{{ db_user2 }}=a*r*w*d*D*x*t*/{{ db_user1 }}	r' in result_database.stdout"
+      - "'{{{ db_user2 }}=r*w*U*/{{ db_user1 }}	S' in result_database.stdout"
+      - "'{{{ db_user2 }}=X*/{{ db_user1 }}	f' in result_database.stdout"
+      - "'{{{ db_user2 }}=U*/{{ db_user1 }}	T' in result_database.stdout"
+
+- name: Grant Select Default privileges on Sequences & Tables
+  postgresql_privs:
+    type: "default_priv"
+    state: "present"
+    roles: "{{ db_user2 }}"
+    privs: "SELECT"
+    objs: "TABLES,SEQUENCES"
+    db: "{{ db_name }}"
+    login: "{{ db_user1 }}"
+    grant_option: True
+    password: "password"
+    host: "localhost"
+
+- name: Check that the correct default privs are applied
+  become: True
+  become_user: "{{ pg_user }}"
+  shell: echo "SELECT defaclacl, defaclobjtype FROM pg_default_acl a JOIN pg_namespace b ON a.defaclnamespace=b.oid | psql {{ db_name }}
+  register: result_database
+
+- assert:
+    that:
+      - "result_database.stdout_lines[-1] == '(4 rows)'"
+      - "'{{{ db_user2 }}=r/{{ db_user1 }}	r' in result_database.stdout"
+      - "'{{{ db_user2 }}=r/{{ db_user1 }}	S' in result_database.stdout"
+      - "'{{{ db_user2 }}=X*/{{ db_user1 }}	f' in result_database.stdout"
+      - "'{{{ db_user2 }}=U*/{{ db_user1 }}	T' in result_database.stdout"
+
+
+
 - name: Remove user
   postgresql_user:
     name: "{{ db_user2 }}"
